@@ -245,11 +245,13 @@
         <div class="label">approach 3 — splat heightmap (V1)</div>
         <p style="margin: 0;">
           Sample the splat itself for the floor. Per (x, y), gather nearby
-          splats and take the top of the lowest 15% — the visible floor
-          surface, not the camera-collision boundary. <strong>Tracks the
-          ripples</strong> per-(x,y), ignores furniture (which sits well
-          above the floor band), and needs nothing authored. The same
-          <code>.spz</code> is the visual <em>and</em> the floor.
+          splats, sort by Z, then <strong>slide a 15 cm window through the
+          bottom 60% of the sorted list and find the densest position.</strong>
+          The upper edge of that densest window is the floor — it adapts to
+          each scene's distribution rather than assuming the floor lives at
+          any fixed percentile. The same <code>.spz</code> is the visual
+          <em>and</em> the floor; nothing authored, no per-scene calibration
+          for the common indoor case.
         </p>
       </div>
     </div>
@@ -316,7 +318,7 @@
         <text x="200" y="234" text-anchor="middle" fill="#8a92a3">gather radius</text>
         <!-- selected cell heightmap line -->
         <line x1="160" y1="200" x2="240" y2="200" stroke="#33ff66" stroke-width="2" opacity="0.9"/>
-        <text x="270" y="204" fill="#33ff66">p15 → cell floor z</text>
+        <text x="270" y="204" fill="#33ff66">densest band → cell floor z</text>
         <!-- legend -->
         <g transform="translate(20, 14)">
           <circle cx="6" cy="6" r="3" fill="#8ad6c3"/><text x="14" y="9" fill="#8a92a3">floor splats</text>
@@ -324,7 +326,7 @@
           <circle cx="6" cy="38" r="3" fill="#9aa6c0" opacity="0.6"/><text x="14" y="41" fill="#8a92a3">ceiling / above</text>
         </g>
       </svg>
-      <div class="caption">For every cell, sort all nearby splats by Z and take p15 (top of the lowest 15%). Sub-floor outliers fall below; furniture and ceilings sit above. Empty cells are filled from neighbours.</div>
+      <div class="caption">For every cell, sort all nearby splats by Z, then slide a 15 cm window through the bottom 60% of the list. The upper edge of the densest window is the floor — adaptive to each cell's distribution rather than tied to a fixed percentile.</div>
     </div>
 
     <h3>Step 3 — Each frame the character is grounded, snap them to the floor</h3>
@@ -433,6 +435,7 @@ function tick() {
           <li>walking under tables / overhangs</li>
           <li>walls / lateral collision (only floor)</li>
           <li>very sparse splats (&lt;8 samples per cell)</li>
+          <li>scenes where rugs / cushions / very low furniture are the densest low-z band — distinguishing those from the actual floor needs object understanding (V4)</li>
         </ul>
       </div>
     </div>

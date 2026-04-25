@@ -60,7 +60,7 @@ Three options were on the table for "where does the character stand."
 
 1. **Marble Labs' collider mesh.** Tempting, since it ships alongside every splat. But that mesh is authored for **first-person camera collision** — don't fly through walls, don't fall through the world. Its lowest top-facing polygon at any (x, y) is whatever the camera could land on, which includes booth seats, stool feet, and table tops. A character grounded on it climbs onto furniture instead of walking the aisle.
 2. **No floor proxy.** Pick a sensible constant Z by eye, plant the character there. Beats option 1 for character navigation (at least nothing climbs furniture) but misses the splat's per-gaussian ripple — the visible floor isn't a perfectly flat plane. A constant Z lets feet sink in the dips and float over the rises.
-3. **Splat heightmap (this lib).** Sample the splat directly. Per (x, y), gather nearby splat centroids and take the top of the lowest 15% — the visible floor surface, not the camera-collision boundary. Tracks the ripples, ignores furniture (it sits above the floor band), needs nothing authored. The same `.spz` is the visual *and* the floor.
+3. **Splat heightmap (this lib).** Sample the splat directly. Per (x, y), gather nearby splat centroids, sort by Z, then **slide a 15 cm window through the bottom 60% of the sorted list and find the densest position**. The upper edge of that densest band is the visible floor — it adapts to each scene's distribution rather than picking a fixed percentile. The same `.spz` is the visual *and* the floor.
 
 ## How it works
 
@@ -69,7 +69,7 @@ Three options were on the table for "where does the character stand."
 1. Pull each splat's xyz centroid via `splatMesh.getSplatCenter(i, vec)` (mkkellogg API), transform by `matrixWorld` to get world-space coords. Stride down to ~30k samples.
 2. Compute the world's xy footprint from the 5th–95th percentile of sample positions (ignores stray sky/noise points).
 3. Bin the footprint into a 32×32 grid.
-4. **Per cell**, gather every sample within `1.5 × cellSize` xy distance, sort by z, take **p15** — the top of the lowest 15% of nearby splats. That sits on the visible floor surface, above sub-floor outliers and below furniture/booth bases.
+4. **Per cell**, gather every sample within `1.5 × cellSize` xy distance, sort by z, then slide a window of `bandWidth` metres through the bottom `searchFraction` of the sorted list and find the densest window position. The upper edge of that densest window is the floor for the cell — it adapts to whatever the actual distribution is in this cell, rather than assuming the floor lives at any fixed percentile.
 5. Fill remaining empty cells from neighbours (3 passes).
 
 ### Snap the character (every frame)
@@ -96,7 +96,8 @@ buildSplatFloorHM(samples, opts?)
 
   opts:
     nx, ny              grid resolution (default 32×32)
-    floorPercentile     p-value for floor band (default 0.15)
+    bandWidth           floor band width, metres (default 0.15)
+    searchFraction      bottom fraction of each cell's z list to search (default 0.6)
     radiusFactor        gather radius in cells (default 1.5)
     minSamplesPerCell   skip cells with fewer (default 8)
     fillPasses          neighbour-fill iterations (default 3)
@@ -124,13 +125,15 @@ This is the first release in a longer effort to make characters aware of Gaussia
 
 This is a **single-floor** approximation: `z = f(x, y)`, one Z per xy.
 
-- ✅ flat-ish indoor floors with mild slopes (rooms, galleries, diners, halls)
+- ✅ indoor scenes with a clear horizontal floor (rooms, galleries, diners, halls)
 - ✅ outdoor terrain with smooth elevation changes
 - ❌ stairs, balconies, multi-storey buildings (you can't walk on top of *and* under the same xy)
 - ❌ overhangs (low ceiling, walking under a table)
 - ❌ very sparse splats — cells with fewer than 8 samples fall back to neighbours
 
-For multi-floor support, the heightmap would need to store *all* dense z-bands per cell and let the walker pick the band closest to its current z. That's not in this lib yet.
+The dense-band cutoff is more robust than a hardcoded percentile but isn't a panacea. Scenes with very thick sub-floor noise, very sparse floor coverage, or low-rise furniture (rugs, cushions) can still confuse it; you may need to tune `bandWidth` or `searchFraction`. True scene-content awareness — distinguishing "this splat is floor" from "this splat is rug" — needs object segmentation, which is on the roadmap as V4.
+
+For multi-floor support, the heightmap would need to store *all* dense z-bands per cell and let the walker pick the band closest to its current z. Not in V1.
 
 ## Splat orientation
 

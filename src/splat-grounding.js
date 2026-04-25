@@ -35,18 +35,25 @@ export function sampleSplatCenters(splatMesh, targetCount = 30000) {
  * Build a 2D floor heightmap from splat-center samples.
  *
  * Per cell: gather all samples within `radiusFactor * cellSize` xy distance,
- * sort by z, take `floorPercentile` (default 0.15 = top of the lowest 15% of
- * nearby splats — sits on the visible floor surface, above sub-floor outliers
- * and below furniture/booth bases). Empty cells are filled from neighbours.
+ * sort by z, then **slide a window of `bandWidth` metres through the bottom
+ * `searchFraction` of the sorted z values and find the densest position.**
+ * The upper edge of that densest band is the visible floor for that cell.
+ *
+ * Why this and not a fixed percentile: real splats have wildly different
+ * sub-floor noise levels, floor coverage, and furniture density. A hardcoded
+ * percentile only lands on the floor when the scene's distribution matches
+ * the one it was tuned for. The dense-band approach adapts: it finds the
+ * actual concentration of low-z splats wherever it sits in the sorted list.
  *
  * @param {Array<[number, number, number]>} samples
  * @param {object}  [opts]
  * @param {number}  [opts.nx=32]
  * @param {number}  [opts.ny=32]
- * @param {number}  [opts.floorPercentile=0.15]
- * @param {number}  [opts.radiusFactor=1.5]
- * @param {number}  [opts.minSamplesPerCell=8]
- * @param {number}  [opts.fillPasses=3]
+ * @param {number}  [opts.bandWidth=0.15]      width of the floor band, in metres
+ * @param {number}  [opts.searchFraction=0.6]  search the bottom N of each cell's z list
+ * @param {number}  [opts.radiusFactor=1.5]    gather radius in cells
+ * @param {number}  [opts.minSamplesPerCell=8] skip cells with fewer
+ * @param {number}  [opts.fillPasses=3]        neighbour-fill iterations
  * @returns {{
  *   heights: Float32Array, nx: number, ny: number,
  *   xMin: number, yMin: number, cellX: number, cellY: number
@@ -56,7 +63,8 @@ export function buildSplatFloorHM(samples, opts = {}) {
   const {
     nx = 32,
     ny = 32,
-    floorPercentile = 0.15,
+    bandWidth = 0.15,
+    searchFraction = 0.6,
     radiusFactor = 1.5,
     minSamplesPerCell = 8,
     fillPasses = 3,
@@ -88,7 +96,7 @@ export function buildSplatFloorHM(samples, opts = {}) {
       }
       if (zs.length < minSamplesPerCell) continue;
       zs.sort((u, v) => u - v);
-      heights[j * nx + i] = zs[Math.floor(zs.length * floorPercentile)];
+      heights[j * nx + i] = densestBandUpper(zs, bandWidth, searchFraction);
     }
   }
   // Fill empty cells from neighbours so the lookup never falls through to NaN.
@@ -111,6 +119,38 @@ export function buildSplatFloorHM(samples, opts = {}) {
     }
   }
   return { heights: filled, nx, ny, xMin, yMin, cellX, cellY };
+}
+
+/**
+ * Slide a window of width `bandWidth` (metres) through sorted z values `zs`.
+ * Find the densest window position inside the bottom `searchFraction` of the
+ * data and return its upper edge — the visible floor surface for that cell.
+ *
+ * Adapts to each scene's distribution:
+ * - clean scene with thin floor band → window settles low and tight.
+ * - noisy scene with diffuse sub-floor → window skips past the noise to where
+ *   actual splats are dense.
+ * - sparse floor + dense walls → searchFraction caps the search so a wall
+ *   band can't be mistaken for the floor.
+ *
+ * Two-pointer sweep: O(n) per cell, n = splat count in cell.
+ */
+function densestBandUpper(zs, bandWidth, searchFraction) {
+  const n = zs.length;
+  const searchEnd = Math.max(2, Math.floor(n * searchFraction));
+  let bestCount = 0;
+  let bestUpper = zs[0];
+  let hi = 0;
+  for (let lo = 0; lo < searchEnd; lo++) {
+    if (hi < lo) hi = lo;
+    while (hi < n && zs[hi] - zs[lo] <= bandWidth) hi++;
+    const count = hi - lo;       // splats in [lo, hi - 1]
+    if (count > bestCount) {
+      bestCount = count;
+      bestUpper = zs[hi - 1];
+    }
+  }
+  return bestUpper;
 }
 
 /**
