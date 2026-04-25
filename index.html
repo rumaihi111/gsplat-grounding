@@ -3,135 +3,135 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>gsplat-grounding · runtime collider extraction from Gaussian splats</title>
-<meta name="description" content="Drop a Mixamo-rigged character into any Gaussian-splat scene and have them walk on the visible floor — no authored collider mesh, all derived in-browser at runtime from splat density." />
+<title>gsplat-grounding</title>
+<meta name="description" content="Drop a character into a Gaussian-splat scene and it walks on the floor." />
 <meta property="og:title" content="gsplat-grounding" />
-<meta property="og:description" content="Runtime collider extraction from Gaussian splat density. Same .spz acts as both the visual environment and the collision source." />
+<meta property="og:description" content="Drop a character into a Gaussian-splat scene and it walks on the floor." />
 <meta property="og:type" content="website" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
     --bg: #0f1115;
-    --bg-2: #161922;
+    --panel: #161922;
     --fg: #e7eaf0;
     --fg-dim: #8a92a3;
-    --accent: #8ad6c3;
-    --accent-2: #e8a84d;
-    --code-bg: #14171f;
-    --border: #232734;
+    --line: #232734;
+    --green: #8ad6c3;
+    --amber: #e8a84d;
+    --red: #d76b5a;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
     background: var(--bg); color: var(--fg);
-    line-height: 1.65; -webkit-font-smoothing: antialiased;
+    line-height: 1.6; -webkit-font-smoothing: antialiased;
   }
-  a { color: var(--accent); text-decoration: none; }
+  a { color: var(--green); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
-  code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 0.88em; color: #e7d18a; }
-  pre {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: 16px 20px; overflow-x: auto; font-size: 0.86em; line-height: 1.55;
-    color: var(--fg);
-  }
-  pre code { background: transparent; padding: 0; color: inherit; }
-  .container { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+  code, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.9em; }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
 
-  /* Hero */
-  header.hero {
-    padding: 72px 24px 48px; text-align: center;
-    border-bottom: 1px solid var(--border);
-  }
+  /* hero */
+  header.hero { padding: 90px 0 60px; text-align: center; }
   header.hero h1 {
-    font-size: 44px; font-weight: 700; letter-spacing: -0.02em;
-    margin-bottom: 12px; color: #fff;
+    font-size: 56px; font-weight: 700; letter-spacing: -0.025em;
+    color: #fff; margin-bottom: 14px;
   }
-  header.hero .tag {
-    color: var(--fg-dim); font-size: 18px; max-width: 640px; margin: 0 auto 28px;
+  header.hero .tagline {
+    font-size: 20px; color: var(--fg-dim); max-width: 640px;
+    margin: 0 auto 32px;
   }
-  header.hero .links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 500;
-    background: var(--bg-2); color: var(--fg); border: 1px solid var(--border);
-    transition: all 0.15s;
+  header.hero .btn {
+    display: inline-block; background: var(--green); color: #0a0c10;
+    padding: 11px 22px; border-radius: 8px; font-weight: 500;
+    font-size: 15px; transition: background 0.15s;
   }
-  .btn:hover { background: var(--border); border-color: var(--accent); text-decoration: none; }
-  .btn.primary { background: var(--accent); color: #0a0c10; border-color: var(--accent); }
-  .btn.primary:hover { background: #a3e3d4; border-color: #a3e3d4; }
+  header.hero .btn:hover { background: #a3e3d4; text-decoration: none; }
+  header.hero .hero-video {
+    display: block; width: 100%; max-width: 1080px;
+    margin: 56px auto 0; border-radius: 12px;
+    aspect-ratio: 1280 / 656; background: var(--panel);
+    border: 1px solid var(--line);
+  }
 
-  /* Sections */
-  section { padding: 56px 0; border-bottom: 1px solid var(--border); }
-  section:last-of-type { border-bottom: 0; }
-  section h2 {
+  /* why row */
+  section.why { padding: 80px 0 40px; border-top: 1px solid var(--line); }
+  section.why h2 {
     font-size: 13px; text-transform: uppercase; letter-spacing: 0.18em;
-    color: var(--accent-2); margin-bottom: 16px; font-weight: 600;
+    color: var(--amber); margin-bottom: 28px; font-weight: 600;
   }
-  section h3 {
-    font-size: 22px; font-weight: 600; margin: 24px 0 10px; color: #fff;
+  .row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
   }
-  section p { margin-bottom: 14px; color: var(--fg); }
-  section ul { padding-left: 22px; margin-bottom: 14px; }
-  section li { margin-bottom: 6px; }
+  .row figure { margin: 0; }
+  .row video {
+    width: 100%; aspect-ratio: 1280 / 656; display: block;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .row figcaption {
+    margin-top: 12px; font-size: 14px; color: var(--fg-dim);
+    line-height: 1.5;
+  }
+  .row figure.win figcaption { color: var(--green); }
+  .row figure.lose figcaption { color: var(--red); }
 
-  /* Teaser canvas */
-  .teaser {
-    margin: 0 0 28px;
-    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
-    background: var(--bg-2); aspect-ratio: 16 / 9;
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
+  /* what V1 does */
+  section.what { padding: 60px 0; border-top: 1px solid var(--line); }
+  section.what h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--amber); margin-bottom: 18px; font-weight: 600;
   }
-  .teaser .placeholder {
-    color: var(--fg-dim); font-family: 'JetBrains Mono', monospace;
-    font-size: 13px; text-align: center; padding: 20px;
+  section.what .body {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: center;
   }
-  .teaser img, .teaser video {
-    width: 100%; height: 100%; object-fit: cover; display: block;
+  section.what p { font-size: 16px; margin-bottom: 14px; }
+  section.what .scope {
+    color: var(--fg-dim); font-size: 14px;
+    border-left: 2px solid var(--line); padding-left: 14px;
   }
-
-  /* SVG diagram */
-  .diagram {
-    background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 20px; margin: 24px 0; overflow: hidden;
+  section.what .diagram {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px;
   }
-  .diagram svg { width: 100%; height: auto; display: block; }
-  .caption {
-    color: var(--fg-dim); font-size: 13px; margin-top: 12px; text-align: center;
+  section.what .diagram svg { width: 100%; height: auto; display: block; }
+  section.what .diagram .caption {
+    color: var(--fg-dim); font-size: 12px; margin-top: 10px; text-align: center;
     font-family: 'JetBrains Mono', monospace;
   }
 
-  /* Two-column for limits / pros */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0; }
-  .card {
-    background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 18px 20px;
+  /* roadmap */
+  section.roadmap { padding: 60px 0; border-top: 1px solid var(--line); }
+  section.roadmap h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--amber); margin-bottom: 18px; font-weight: 600;
   }
-  .card video {
-    width: calc(100% + 40px); margin: -18px -20px 14px;
-    display: block; aspect-ratio: 720 / 368; background: #0a0c10;
-    border-bottom: 1px solid var(--border);
+  section.roadmap ul { list-style: none; }
+  section.roadmap li {
+    padding: 10px 0; border-bottom: 1px dashed var(--line);
+    display: flex; gap: 14px; align-items: baseline;
   }
-  .card .label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
-    color: var(--fg-dim); margin-bottom: 8px;
+  section.roadmap li:last-child { border-bottom: 0; }
+  section.roadmap li .v {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--amber); flex-shrink: 0; width: 36px;
   }
-  .card.ok .label { color: var(--accent); }
-  .card.no .label { color: #d76b5a; }
+  section.roadmap li.now .v { color: var(--green); }
 
-  /* Footer */
+  /* footer */
   footer {
-    padding: 36px 24px; text-align: center; color: var(--fg-dim);
-    font-size: 13px; border-top: 1px solid var(--border);
+    padding: 36px 0; border-top: 1px solid var(--line);
+    text-align: center; color: var(--fg-dim); font-size: 13px;
   }
+  footer p { margin: 4px 0; }
 
-  @media (max-width: 600px) {
-    header.hero { padding: 56px 16px 36px; }
-    header.hero h1 { font-size: 32px; }
-    .grid { grid-template-columns: 1fr; }
+  @media (max-width: 760px) {
+    header.hero h1 { font-size: 38px; }
+    .row { grid-template-columns: 1fr; }
+    section.what .body { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -140,386 +140,117 @@
 <header class="hero">
   <div class="container">
     <h1>gsplat-grounding</h1>
-    <p class="tag">
-      Drop a character into a Gaussian-splat scene and have them walk on the visible floor —
-      no authored collider, no preprocessing. The same <code>.spz</code> acts as both the
-      visual environment and the collision source.
-    </p>
-    <div class="links">
-      <a class="btn primary" href="https://github.com/omarintern/gsplat-grounding">★ GitHub</a>
-      <a class="btn" href="#how-it-works">How it works</a>
-      <a class="btn" href="#api">API</a>
-    </div>
+    <p class="tagline">Drop a character into a Gaussian-splat scene and it walks on the floor.</p>
+    <a class="btn" href="https://github.com/omarintern/gsplat-grounding">View on GitHub →</a>
+    <video class="hero-video" autoplay loop muted playsinline preload="metadata" poster="docs/teaser.png">
+      <source src="docs/p15_2.mp4" type="video/mp4">
+    </video>
   </div>
 </header>
 
-<section id="abstract">
+<section class="why">
   <div class="container">
-    <h2>Abstract</h2>
-    <div class="teaser">
-      <video autoplay loop muted playsinline preload="metadata"
-             poster="docs/teaser.png" aria-label="A character walking through a Marble Labs diner splat, feet planted on the floor as the heightmap derives the surface from splat density.">
-        <source src="docs/p15_2.mp4" type="video/mp4">
-        <img src="docs/teaser.png" alt="A character walking through a Marble Labs diner splat with the splat-derived floor heightmap.">
-      </video>
-    </div>
-    <p>
-      Gaussian-splatting captures look great but are notoriously hard to animate against —
-      a splat is a cloud of fuzzy ellipsoids, not a manifold mesh. Today, putting a
-      character into a splat scene means hand-authoring a collider in Blender, or relying
-      on a separately shipped collision mesh.
-    </p>
-    <p>
-      This release is the first step in a longer arc: making characters
-      <em>aware</em> of Gaussian-splat scenes the way they're aware of
-      hand-authored worlds. A splat is a single bag of fuzzy ellipsoids;
-      teaching it to behave like floors, obstacles, and interactive objects
-      is the work.
-    </p>
-    <p>
-      <strong>V1 — this release — gives a character floor awareness.</strong>
-      We sample where the splats are, figure out which ones make up the
-      ground, and use that as the surface the character walks on. They
-      follow slopes, climb raised areas, get stuck against things that
-      protrude from the floor. While they're on their feet — walking,
-      standing, idling — whichever part of their body is lowest snaps to
-      that surface, so planted foot stays planted and swing foot lifts
-      naturally. (Jumps and falls are the caller's concern: stop snapping
-      during the airborne phase, resume on landing.)
-    </p>
-    <p>
-      The whole library is one short JavaScript file. It works with any splat
-      the popular <a href="https://github.com/mkkellogg/GaussianSplats3D">three.js splat renderer</a>
-      can read (<code>.spz</code>, <code>.ply</code>, <code>.splat</code>, <code>.ksplat</code>),
-      and with any rigged character — Mixamo or otherwise.
-    </p>
-  </div>
-</section>
-
-<section id="findings">
-  <div class="container">
-    <h2>What we tried — and what we found</h2>
-    <p>
-      Three options were on the table for "where does the character stand."
-      Each one fails or succeeds for its own specific reason. The middle one
-      explains why we couldn't just lean on what Marble Labs already provides;
-      the third is what V1 ships.
-    </p>
-    <div class="grid" style="grid-template-columns: 1fr; gap: 18px; margin-top: 18px;">
-      <div class="card no">
+    <h2>Three options for the floor</h2>
+    <div class="row">
+      <figure class="lose">
         <video autoplay loop muted playsinline preload="metadata">
           <source src="docs/collider.mp4" type="video/mp4">
         </video>
-        <div class="label">approach 1 — collider mesh</div>
-        <p style="margin: 0;">
-          Marble Labs ships a polygon collider mesh alongside every splat.
-          Tempting to use it as the floor source — except <strong>that mesh
-          is authored for first-person camera collision</strong> (don't fly
-          through walls, don't fall through the world), not character
-          grounding. Its lowest top-facing polygon at any (x, y) is whatever
-          the camera could land on — booth seats, stool feet, table tops.
-          A character grounded on it climbs onto furniture instead of
-          walking the aisle.
-        </p>
-      </div>
-      <div class="card">
+        <figcaption>Marble's collider — built for cameras, not characters. Climbs onto seats.</figcaption>
+      </figure>
+      <figure class="lose">
         <video autoplay loop muted playsinline preload="metadata">
           <source src="docs/no_ground.mp4" type="video/mp4">
         </video>
-        <div class="label">approach 2 — no floor proxy</div>
-        <p style="margin: 0;">
-          Pick a sensible constant Z by eye, plant the character there. No
-          per-(x,y) lookup, no collision against anything. <strong>Beats the
-          collider mesh</strong> for character navigation — at least the
-          character doesn't climb seats. But the splat's floor isn't a
-          perfectly flat plane: per-gaussian Z noise and reconstruction
-          drift mean the visible surface ripples a few centimetres up and
-          down. A constant Z misses those ripples; feet sink in the dips
-          and float over the rises.
-        </p>
-      </div>
-      <div class="card ok">
+        <figcaption>No floor logic. Character sinks through.</figcaption>
+      </figure>
+      <figure class="win">
         <video autoplay loop muted playsinline preload="metadata">
           <source src="docs/p15.mp4" type="video/mp4">
         </video>
-        <div class="label">approach 3 — splat heightmap (V1)</div>
-        <p style="margin: 0;">
-          Sample the splat itself for the floor. Per (x, y), gather nearby
-          splats, sort by Z, then <strong>slide a 15 cm window through the
-          bottom 60% of the sorted list and find the densest position.</strong>
-          The upper edge of that densest window is the floor — it adapts to
-          each scene's distribution rather than assuming the floor lives at
-          any fixed percentile. The same <code>.spz</code> is the visual
-          <em>and</em> the floor; nothing authored, no per-scene calibration
-          for the common indoor case.
+        <figcaption>Floor derived from the splat itself. Character walks.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="what">
+  <div class="container">
+    <h2>What V1 does</h2>
+    <div class="body">
+      <div class="text">
+        <p>
+          V1 finds the floor in any indoor Gaussian-splat scene. The library
+          samples where the splats are, looks for the densest low band of
+          points, and uses that as the surface the character walks on. No
+          authored collision mesh, no preprocessing — the same splat file is
+          the visual environment <em>and</em> the floor.
+        </p>
+        <p>
+          Each frame, the character's lowest point is snapped to that surface.
+          The planted foot stays planted, the swing foot lifts naturally, and
+          slopes in the captured floor are followed.
+        </p>
+        <p class="scope">
+          V1 handles indoor scenes with a clear horizontal floor. Jumps,
+          falls, multi-floor environments, and overhangs are out of scope —
+          they're on the roadmap below.
         </p>
       </div>
-    </div>
-  </div>
-</section>
-
-<section id="how-it-works">
-  <div class="container">
-    <h2>How it works</h2>
-
-    <h3>Step 1 — Read where every splat is</h3>
-    <p>
-      A Gaussian splat scene is, mathematically, a cloud of fuzzy ellipsoids. Each
-      ellipsoid has a center point. We read those center points (about 30,000 of
-      them) when the splat first loads. They outline every visible surface in the
-      scene — the floor, the walls, the furniture, the ceiling.
-    </p>
-
-    <h3>Step 2 — Build the heightmap</h3>
-    <div class="diagram">
-      <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace" font-size="11">
-        <!-- floor splats (low z) -->
-        <g fill="#8ad6c3" opacity="0.85">
-          <circle cx="60"  cy="200" r="3"/>
-          <circle cx="100" cy="198" r="3"/>
-          <circle cx="140" cy="202" r="3"/>
-          <circle cx="180" cy="199" r="3"/>
-          <circle cx="220" cy="201" r="3"/>
-          <circle cx="260" cy="200" r="3"/>
-          <circle cx="300" cy="198" r="3"/>
-          <circle cx="340" cy="201" r="3"/>
-          <circle cx="380" cy="199" r="3"/>
-          <circle cx="420" cy="202" r="3"/>
-          <circle cx="460" cy="200" r="3"/>
-          <circle cx="500" cy="198" r="3"/>
-          <circle cx="540" cy="201" r="3"/>
-          <circle cx="580" cy="199" r="3"/>
-          <circle cx="620" cy="200" r="3"/>
-          <circle cx="660" cy="198" r="3"/>
-        </g>
-        <!-- furniture splats (mid z) -->
-        <g fill="#e8a84d" opacity="0.85">
-          <circle cx="80"  cy="160" r="3"/>
-          <circle cx="120" cy="155" r="3"/>
-          <circle cx="160" cy="158" r="3"/>
-          <circle cx="380" cy="150" r="3"/>
-          <circle cx="420" cy="145" r="3"/>
-          <circle cx="460" cy="148" r="3"/>
-          <circle cx="500" cy="155" r="3"/>
-        </g>
-        <!-- ceiling splats (high z) -->
-        <g fill="#9aa6c0" opacity="0.6">
-          <circle cx="60"  cy="60" r="3"/>
-          <circle cx="120" cy="58" r="3"/>
-          <circle cx="200" cy="62" r="3"/>
-          <circle cx="280" cy="60" r="3"/>
-          <circle cx="360" cy="58" r="3"/>
-          <circle cx="440" cy="62" r="3"/>
-          <circle cx="520" cy="60" r="3"/>
-          <circle cx="600" cy="58" r="3"/>
-        </g>
-        <!-- gather radius -->
-        <circle cx="200" cy="200" r="40" fill="none" stroke="#8ad6c3" stroke-dasharray="3 3" opacity="0.6"/>
-        <text x="200" y="234" text-anchor="middle" fill="#8a92a3">gather radius</text>
-        <!-- selected cell heightmap line -->
-        <line x1="160" y1="200" x2="240" y2="200" stroke="#33ff66" stroke-width="2" opacity="0.9"/>
-        <text x="270" y="204" fill="#33ff66">densest band → cell floor z</text>
-        <!-- legend -->
-        <g transform="translate(20, 14)">
-          <circle cx="6" cy="6" r="3" fill="#8ad6c3"/><text x="14" y="9" fill="#8a92a3">floor splats</text>
-          <circle cx="6" cy="22" r="3" fill="#e8a84d"/><text x="14" y="25" fill="#8a92a3">furniture / booth bases</text>
-          <circle cx="6" cy="38" r="3" fill="#9aa6c0" opacity="0.6"/><text x="14" y="41" fill="#8a92a3">ceiling / above</text>
-        </g>
-      </svg>
-      <div class="caption">For every cell, sort all nearby splats by Z, then slide a 15 cm window through the bottom 60% of the list. The upper edge of the densest window is the floor — adaptive to each cell's distribution rather than tied to a fixed percentile.</div>
-    </div>
-
-    <h3>Step 3 — Each frame the character is grounded, snap them to the floor</h3>
-    <p>
-      For grounded animation — walking, standing, idling, sitting — we want
-      one fact to stay true: <em>whichever part of the body is lowest right now
-      should be touching the floor</em>. So each frame we:
-    </p>
-    <ol style="padding-left: 22px; margin: 8px 0 14px;">
-      <li>Look up the floor height at the character's current <code>(x, y)</code>.</li>
-      <li>Measure the lowest point on the character's body in their current pose.</li>
-      <li>Lift or drop the whole character so that lowest point sits exactly on the floor.</li>
-    </ol>
-    <p>
-      The result: the planted foot stays put, the swing foot lifts naturally,
-      and hips bob without the character ever floating above the ground or
-      sinking through it.
-    </p>
-    <p>
-      <strong>Airborne animations</strong> — jumps, falls, dives, knockbacks —
-      need the snap turned off during the airborne phase, otherwise the
-      character would skid along the floor with feet always touching. The lib
-      doesn't try to detect airborne vs. grounded automatically; the caller
-      stops invoking <code>groundCharacter()</code> when the current animation
-      isn't a grounded one and resumes on landing. Animation libraries (Mixamo,
-      ActorCore, etc.) typically tag clips with this kind of metadata; if
-      yours doesn't, a per-clip <code>{ grounded: true | false }</code> flag in
-      a small JSON next to your animations is the standard pattern.
-    </p>
-    <details style="margin-top: 14px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px;">
-      <summary style="cursor: pointer; color: var(--accent); font-weight: 500;">three.js implementation notes</summary>
-      <p style="margin: 10px 0 0; color: var(--fg-dim); font-size: 14px;">
-        For a Mixamo-rigged <code>SkinnedMesh</code> animated by an
-        <code>AnimationMixer</code>: update the mixer first so bones reflect this
-        frame's pose, then take the <em>precise</em> bounding box —
-        <code>Box3.setFromObject(walker, true)</code> — which transforms every
-        skinned vertex into world space rather than reusing the rest-pose box.
-        Bilinear-sample the heightmap at <code>(walker.x, walker.y)</code> for
-        <code>floorZ</code>, then shift <code>walker.position.z</code> by
-        <code>floorZ − bbox.min.z</code>.
-      </p>
-    </details>
-  </div>
-</section>
-
-<section id="results">
-  <div class="container">
-    <h2>Results</h2>
-    <div class="teaser">
-      <img src="docs/result.png"
-           alt="Floor carpet visualisation — green wireframe shows the heightmap derived from the splat, draped over the visible floor."
-           onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'placeholder',innerHTML:'<div style=&quot;font-size:24px;margin-bottom:8px;&quot;>▶</div>result still — drop at <code>docs/result.png</code>'}))">
-    </div>
-    <p>
-      Tested on Marble Labs splats (indoor restaurants, halls, captures) and on
-      mkkellogg's published demo scenes. Single-floor flat-ish indoor spaces are the
-      strongest case. The library handles mild slopes in the captured floor by
-      following them — the character traces the splat-derived terrain.
-    </p>
-  </div>
-</section>
-
-<section id="api">
-  <div class="container">
-    <h2>API</h2>
-    <p>The library is one file. Five functions:</p>
-<pre><code>import {
-  sampleSplatCenters,   // pull centroids out of an mkkellogg splatMesh
-  buildSplatFloorHM,    // build the 2D floor heightmap once
-  sampleSplatFloor,     // bilinear lookup at (x, y)
-  groundCharacter,      // per-frame: snap walker to heightmap
-  buildFloorCarpet,     // wireframe debug viz of the heightmap
-} from './splat-grounding.js';
-
-const samples = sampleSplatCenters(viewer.splatMesh, 30000);
-const floorHM = buildSplatFloorHM(samples);
-
-function tick() {
-  mixer.update(dt);
-  groundCharacter(walker, floorHM);
-  renderer.render(scene, camera);
-}</code></pre>
-    <p style="margin-top: 16px;">Full API reference and option flags in the <a href="https://github.com/omarintern/gsplat-grounding#api">README</a>.</p>
-  </div>
-</section>
-
-<section id="strengths-limits">
-  <div class="container">
-    <h2>Strengths and limits</h2>
-    <div class="grid">
-      <div class="card ok">
-        <div class="label">✓ works for</div>
-        <ul>
-          <li>flat-ish indoor floors (rooms, galleries, restaurants)</li>
-          <li>outdoor terrain with smooth elevation</li>
-          <li>any rig <code>three.js</code> can bound (Mixamo, custom)</li>
-          <li>any splat format <code>@mkkellogg/gaussian-splats-3d</code> decodes</li>
-          <li>zero preprocessing, zero authored assets</li>
-        </ul>
-      </div>
-      <div class="card no">
-        <div class="label">✗ doesn't handle</div>
-        <ul>
-          <li>airborne motion (jumps, falls) — caller stops snapping during the airborne phase</li>
-          <li>multi-floor environments (stairs, balconies)</li>
-          <li>walking under tables / overhangs</li>
-          <li>walls / lateral collision (only floor)</li>
-          <li>very sparse splats (&lt;8 samples per cell)</li>
-          <li>scenes where rugs / cushions / very low furniture are the densest low-z band — distinguishing those from the actual floor needs object understanding (V4)</li>
-        </ul>
+      <div class="diagram">
+        <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace" font-size="11">
+          <g fill="#8ad6c3" opacity="0.85">
+            <circle cx="60" cy="200" r="3"/><circle cx="100" cy="198" r="3"/>
+            <circle cx="140" cy="202" r="3"/><circle cx="180" cy="199" r="3"/>
+            <circle cx="220" cy="201" r="3"/><circle cx="260" cy="200" r="3"/>
+            <circle cx="300" cy="198" r="3"/><circle cx="340" cy="201" r="3"/>
+            <circle cx="380" cy="199" r="3"/><circle cx="420" cy="202" r="3"/>
+            <circle cx="460" cy="200" r="3"/><circle cx="500" cy="198" r="3"/>
+            <circle cx="540" cy="201" r="3"/><circle cx="580" cy="199" r="3"/>
+            <circle cx="620" cy="200" r="3"/><circle cx="660" cy="198" r="3"/>
+          </g>
+          <g fill="#e8a84d" opacity="0.85">
+            <circle cx="80" cy="160" r="3"/><circle cx="120" cy="155" r="3"/>
+            <circle cx="160" cy="158" r="3"/><circle cx="380" cy="150" r="3"/>
+            <circle cx="420" cy="145" r="3"/><circle cx="460" cy="148" r="3"/>
+            <circle cx="500" cy="155" r="3"/>
+          </g>
+          <g fill="#9aa6c0" opacity="0.5">
+            <circle cx="60" cy="60" r="3"/><circle cx="120" cy="58" r="3"/>
+            <circle cx="200" cy="62" r="3"/><circle cx="280" cy="60" r="3"/>
+            <circle cx="360" cy="58" r="3"/><circle cx="440" cy="62" r="3"/>
+            <circle cx="520" cy="60" r="3"/><circle cx="600" cy="58" r="3"/>
+          </g>
+          <line x1="160" y1="200" x2="240" y2="200" stroke="#33ff66" stroke-width="2" opacity="0.9"/>
+          <text x="270" y="204" fill="#33ff66">floor</text>
+          <g transform="translate(20, 14)">
+            <circle cx="6" cy="6" r="3" fill="#8ad6c3"/><text x="14" y="9" fill="#8a92a3">floor splats</text>
+            <circle cx="6" cy="22" r="3" fill="#e8a84d"/><text x="14" y="25" fill="#8a92a3">furniture</text>
+            <circle cx="6" cy="38" r="3" fill="#9aa6c0" opacity="0.5"/><text x="14" y="41" fill="#8a92a3">ceiling</text>
+          </g>
+        </svg>
+        <div class="caption">find the densest low band of splats per cell, use its top as the floor</div>
       </div>
     </div>
-    <p>
-      The single-floor limit is fundamental to <code>z = f(x, y)</code> — extending to
-      stairs and balconies needs a multi-Z heightmap (store all dense z-bands per cell;
-      walker picks the band closest to its current z). On the roadmap.
-    </p>
   </div>
 </section>
 
-<section id="roadmap">
+<section class="roadmap">
   <div class="container">
     <h2>Roadmap</h2>
-    <p>
-      Floor awareness is the first piece. A character that knows where they
-      can stand is a foundation for the rest: knowing what blocks their path,
-      knowing what they can interact with. The roadmap below is what comes
-      after V1.
-    </p>
-    <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 18px;">
-      <div class="card" style="border-color: var(--accent)">
-        <div class="label" style="color: var(--accent)">V1 · this release</div>
-        <p style="margin: 0;"><strong>Floor awareness.</strong> Character knows
-        where the ground is and follows changes in it — slopes, raised
-        platforms, low obstacles that protrude from the floor. Kinematic snap:
-        the lowest part of the body is forced onto the heightmap every frame.</p>
-      </div>
-      <div class="card" style="border-color: var(--accent-2)">
-        <div class="label" style="color: var(--accent-2)">V2 · next</div>
-        <p style="margin: 0;"><strong>Physics dynamics on the heightmap.</strong>
-        Replace the kinematic snap with a one-sided collision against the
-        heightmap, plus gravity on the character's pivot. Unlocks jumps,
-        falls, knockbacks, dives — anything airborne. The heightmap stops
-        being a constraint and becomes collision geometry.</p>
-      </div>
-      <div class="card" style="border-color: #cfa84d">
-        <div class="label" style="color: #cfa84d">V3 · later</div>
-        <p style="margin: 0;"><strong>Artefact correction.</strong> Splat
-        reconstructions contain floating wisps and ghost ellipsoids that look
-        like real surfaces but aren't. V3 distinguishes real geometry from
-        noise so the blocked-space and walkable-space signals are clean.</p>
-      </div>
-      <div class="card" style="border-color: #9aa6c0">
-        <div class="label" style="color: #9aa6c0">V4+ · future</div>
-        <p style="margin: 0;"><strong>Object segmentation.</strong> Recognise
-        the chair, the door, the jukebox as discrete objects. Build the bridge
-        from "scene with stuff in it" to "things a character can sit on, open,
-        pick up." Groundwork for character interaction in splat scenes.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="credits">
-  <div class="container">
-    <h2>Built on</h2>
     <ul>
-      <li><a href="https://github.com/mkkellogg/GaussianSplats3D">@mkkellogg/gaussian-splats-3d</a> — does all the splat decoding, sorting, and rasterization. We only consume <code>splatMesh.getSplatCenter()</code>.</li>
-      <li><a href="https://threejs.org/">three.js</a> — renderer, <code>Box3.setFromObject(obj, true)</code> (precise skinned bbox), <code>AnimationMixer</code>.</li>
-      <li>Mixamo — the demo character rig and walk animation (the actual <code>.glb</code> isn't shipped; bring your own).</li>
+      <li class="now"><span class="v">V1</span><span>find the floor (this release)</span></li>
+      <li><span class="v">V2</span><span>physics on top — jumps, falls, gravity</span></li>
+      <li><span class="v">V3</span><span>clean the splat noise — sharper "blocked vs walkable" signal</span></li>
+      <li><span class="v">V4</span><span>recognise objects — chairs to sit on, doors to open</span></li>
     </ul>
-  </div>
-</section>
-
-<section id="cite">
-  <div class="container">
-    <h2>If you use this</h2>
-    <p>
-      MIT-licensed, no attribution required, but a link back is appreciated:
-    </p>
-<pre><code>@misc{omarintern2026gsplatgrounding,
-  author       = {omarintern},
-  title        = {gsplat-grounding: runtime collider extraction from Gaussian-splat density},
-  year         = {2026},
-  howpublished = {\url{https://github.com/omarintern/gsplat-grounding}},
-}</code></pre>
   </div>
 </section>
 
 <footer>
   <div class="container">
-    MIT-licensed. Built with three.js + @mkkellogg/gaussian-splats-3d.
-    <a href="https://github.com/omarintern/gsplat-grounding">github</a>
+    <p>MIT-licensed · <a href="https://github.com/omarintern/gsplat-grounding">github.com/omarintern/gsplat-grounding</a></p>
+    <p>Built on <a href="https://threejs.org/">three.js</a> and <a href="https://github.com/mkkellogg/GaussianSplats3D">@mkkellogg/gaussian-splats-3d</a></p>
   </div>
 </footer>
 
