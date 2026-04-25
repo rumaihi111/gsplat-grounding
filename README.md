@@ -116,10 +116,11 @@ buildFloorCarpet(hm, { color?, opacity? })
 
 The lib's scope is producing a floor heightmap from a splat. Improvements have to feed that scope.
 
-- **V1 (this release) — Find the floor.** Sample the splat, locate the densest low band of points per cell, treat that as the walkable surface. Includes a simple kinematic-snap consumer (`groundCharacter`) for convenience.
+- **V1 (this release) — Find the floor.** Sample the splat, locate the densest low band of points per cell, treat that as the walkable surface. Slopes and single-elevation raised platforms are followed; stairs flatten into a slope at the heightmap's resolution. Includes a simple kinematic-snap consumer (`groundCharacter`) for convenience.
 - **V2 — Clean the splat noise.** Distinguish real low-z geometry from reconstruction artefacts (floating wisps, ghost ellipsoids) so the floor signal is sharper, especially at the edges of the heightmap.
+- **V3 — Multi-Z field.** Replace the single-Z heightmap with a list of dense Z bands per cell. Walker picks the band closest to its current Z. Unlocks discrete stair stepping, balconies, mezzanines, walking under a table — anything that needs more than one floor at the same (x, y).
 
-Out of scope: physics simulation (character controller territory), object recognition (scene-understanding territory), multi-floor environments (would require a different data structure than a single-Z heightmap). Those belong in libraries that *consume* a floor heightmap, not in the one that produces it.
+Out of scope: physics simulation (character controller territory), object recognition (scene-understanding territory). Those belong in libraries that *consume* a floor field, not in the one that produces it.
 
 ## Limitations
 

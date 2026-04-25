@@ -182,21 +182,24 @@
         <p>
           V1 finds the floor in any indoor Gaussian-splat scene. The library
           samples where the splats are, looks for the densest low band of
-          points, and uses that as the surface the character walks on. No
-          authored collision mesh, no preprocessing — the same splat file is
-          the visual environment <em>and</em> the floor.
+          points per (x, y), and uses that as the surface the character
+          walks on. The same splat file is the visual environment <em>and</em>
+          the floor — no authored mesh, no preprocessing.
         </p>
         <p>
-          Each frame, the character's lowest point is snapped to that surface.
-          The planted foot stays planted, the swing foot lifts naturally, and
-          slopes in the captured floor are followed.
+          Level changes that have a single elevation per (x, y) get
+          followed: slopes track smoothly, raised platforms (a step, a
+          podium, a deck) get walked onto. Stairs work but flatten into a
+          slope at the heightmap's resolution; discrete stepping is V3.
+          Multi-floor scenes — balconies, mezzanines, walking under a table
+          — can't be represented with one Z per (x, y) at all; that's
+          also V3.
         </p>
         <p class="scope">
           The lib's scope is producing a floor heightmap from a splat. What
           you do with it — kinematic snap, physics, navmesh — is yours.
-          Jumps and falls (character controllers), object recognition (scene
-          understanding), and multi-floor environments aren't part of this
-          lib.
+          Jumps and falls (character controllers) and object recognition
+          (scene understanding) aren't part of this lib.
         </p>
       </div>
       <div class="diagram">
@@ -243,6 +246,7 @@
     <ul>
       <li class="now"><span class="v">V1</span><span>find the floor (this release)</span></li>
       <li><span class="v">V2</span><span>clean the splat noise for a sharper floor signal</span></li>
+      <li><span class="v">V3</span><span>multi-Z field — discrete stairs, balconies, mezzanines, walking under a table</span></li>
     </ul>
   </div>
 </section>
